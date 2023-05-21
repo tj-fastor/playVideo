@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video Sync</title>
+  <style>
+    #player {
+      width: 640px;
+      height: 360px;
+    }
+  </style>
+</head>
+<body>
+  <video id="player" controls>
+    <source src="http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+  </video>
+
+  <div>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const player = document.getElementById('player');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+
+    let isPlaying = false;
+    let seekInProgress = false;
+    let pendingSeekTime = null;
+
+    player.addEventListener('play', () => {
+      if (!isPlaying) {
+        isPlaying = true;
+        socket.emit('play');
+      }
+    });
+
+    player.addEventListener('pause', () => {
+      if (isPlaying) {
+        isPlaying = false;
+        socket.emit('pause');
+      }
+    });
+
+    player.addEventListener('timeupdate', () => {
+      if (seekInProgress) return;
+
+      const currentTime = player.currentTime;
+      socket.emit('seek', currentTime);
+    });
+
+    sendBtn.addEventListener('click', () => {
+      const message = messageInput.value;
+      socket.emit('message', message);
+      messageInput.value = '';
+    });
+
+    socket.on('initialState', (initialState) => {
+      isPlaying = initialState.isPlaying;
+
+      if (isPlaying) {
+        player.play();
+      } else {
+        player.pause();
+      }
+
+      player.currentTime = initialState.currentTime;
+    });
+
+    socket.on('play', () => {
+      if (!isPlaying) {
+        isPlaying = true;
+        player.play();
+      }
+    });
+
+    socket.on('pause', () => {
+      if (isPlaying) {
+        isPlaying = false;
+        player.pause();
+      }
+    });
+
+    socket.on('seek', (time) => {
+      if (Math.abs(player.currentTime - time) > 0.5) {
+        seekInProgress = true;
+        pendingSeekTime = time;
+        player.currentTime = time;
+      }
+    });
+
+    player.addEventListener('seeked', () => {
+      if (seekInProgress) {
+        seekInProgress = false;
+        if (pendingSeekTime !== null) {
+          player.currentTime = pendingSeekTime;
+          pendingSeekTime = null;
+        }
+      }
+    });
+
+    socket.on('message', (msg) => {
+      const newMessage = document.createElement('p');
+      newMessage.textContent = msg;
+      document.body.appendChild(newMessage);
+    });
+  </script>
+</body>
+</html>
