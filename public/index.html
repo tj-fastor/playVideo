@@ -10,9 +10,10 @@
   </style>
 </head>
 <body>
-  <video id="player" controls>
-    <source src="http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
-  </video>
+  <input type="text" id="videoUrlInput" placeholder="Enter video URL">
+  <button id="loadBtn">Load Video</button>
+  <br>
+  <video id="player" controls></video>
 
   <div>
     <input type="text" id="message" placeholder="Type a message...">
@@ -24,6 +25,8 @@
     const socket = io();
 
     const player = document.getElementById('player');
+    const videoUrlInput = document.getElementById('videoUrlInput');
+    const loadBtn = document.getElementById('loadBtn');
     const messageInput = document.getElementById('message');
     const sendBtn = document.getElementById('sendBtn');
 
@@ -57,6 +60,18 @@
       socket.emit('message', message);
       messageInput.value = '';
     });
+
+    loadBtn.addEventListener('click', () => {
+      const videoUrl = videoUrlInput.value;
+      socket.emit('loadVideo', videoUrl);
+      loadVideo(videoUrl);
+    });
+
+    function loadVideo(videoUrl) {
+      player.src = videoUrl;
+      player.load();
+      player.play();
+    }
 
     socket.on('initialState', (initialState) => {
       isPlaying = initialState.isPlaying;
@@ -107,6 +122,11 @@
       newMessage.textContent = msg;
       document.body.appendChild(newMessage);
     });
+
+    socket.on('loadVideo', (videoUrl) => {
+      loadVideo(videoUrl);
+    });
   </script>
 </body>
 </html>
+
